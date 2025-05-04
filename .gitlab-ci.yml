@@ -1,0 +1,50 @@
+# укажем специальные переменные variables для корректной работы докера в докере
+# (этот режим потребуется для сборки образа)
+
+include: 
+  - project: 'devops/2048-lib'
+    ref: main
+    file: 'lint_job.yml'
+  - project: 'devops/2048-lib'
+    ref: main
+    file: 'audit_job.yml'   
+  - project: 'devops/2048-lib'
+    ref: main
+    file: 'build_job.yml'     
+
+variables:
+  CI_REGISTRY_IMAGE: http://192.168.100.64
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_DRIVER: overlay2
+stages:  
+  - linter # отвечает за проверку Dockerfile на ошибки
+  - audit  # проводит аудит кода проекта на уязвимости      
+  - build  # собирает образ и размещает его в регистре (здесь: регистр Gitlab)
+
+
+docker-lint-job:   
+  stage: linter           # стадия (из определённых выше)
+  image: docker:24.0.5    # используемый образ
+  services:               # позволяет запустить другой контейнер
+    - name: docker:24.0.5-dind 
+  extends:                # код команды для выполнения
+    - .remoute-lint-job
+
+yarn-audit-job:
+  stage: audit
+  image: node:16-alpine 
+  extends:
+    - .remoute-audit-job
+  allow_failure: true     # идём дальше, даже если есть ошибки
+
+build-job:       
+ stage: build
+ image: docker:24.0.5  
+ services:
+   - docker:24.0.5-dind
+ extends:
+   - .remoute-build-job
+ rules:
+   - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+   - if: $CI_COMMIT_BRANCH == "main"

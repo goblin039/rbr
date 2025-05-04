@@ -1,0 +1,3 @@
+.remoute-audit-job:
+  script:
+    - yarn install && yarn audit --level high

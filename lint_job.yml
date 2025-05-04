@@ -1,0 +1,3 @@
+.remoute-lint-job:
+  script:
+    - docker run --rm -i ghcr.io/hadolint/hadolint < Dockerfile
